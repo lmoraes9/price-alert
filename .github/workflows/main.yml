@@ -21,7 +21,7 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          pip install -r requirements.txt
+          pip install requests beautifulsoup4
 
       - name: Rodar script
         env:
