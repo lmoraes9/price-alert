@@ -2,8 +2,8 @@ name: Checador de Preços Oba
 
 on:
   schedule:
-    # Roda a cada 1 hora (no minuto 0)
-    - cron: '0 * * * *'
+    # Roda a cada 1 dia (no minuto 0)
+    - cron: '0 0 * * *'
   workflow_dispatch: # Permite rodar manualmente clicando num botão para testar
 
 jobs:
