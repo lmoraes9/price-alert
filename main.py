@@ -1,128 +1,28 @@
 """
-import requests
-from bs4 import BeautifulSoup
-import json
-import os
-
-# Links do Oba Hortifruti
-OBA_URLS =[
-    "https://www.obahortifruti.com.br/hydro-protein-tangerina-moving-500ml-100010009/p",
-    "https://www.obahortifruti.com.br/hydro-protein-uva-moving-500ml-100010010/p",
-    "https://www.obahortifruti.com.br/hydro-protein-limao-moving-500ml-100010008/p",
-    "https://www.obahortifruti.com.br/moving-hydro-protein-frutas-vermelhas-500-ml-100010970/p"
-]
-
-# Links do Atacadão
-ATACADAO_URLS =[
-    "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-tangerina-7335-58136/p",
-    "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-frutas-vermelhas-9555-59217/p",
-    "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-uva-7337-58137/p",
-    "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-limao-7339-58138/p"
-]
-
-# Junta todas as listas para o robô checar
-URLS = OBA_URLS + ATACADAO_URLS
-
-# Preço alvo (abaixo de 8 reais)
-TARGET_PRICE = 8.00
-
-# Pega as senhas das configurações do GitHub (Secrets)
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN') 
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-
-def send_telegram_message(message):
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print(f"Telegram não configurado. Mensagem seria:\n{message}")
-        return
-    
-    # Suporte para múltiplos IDs caso você tenha usado a opção de enviar para mais de uma pessoa
-    chat_ids_list = TELEGRAM_CHAT_ID.split(',')
-
-    for chat_id in chat_ids_list:
-        chat_id_clean = chat_id.strip()
-        if not chat_id_clean: continue
-
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": chat_id_clean,
-            "text": message
-        }
-        try:
-            requests.post(url, json=payload)
-            print(f"Mensagem enviada para {chat_id_clean}!")
-        except Exception as e:
-            print(f"Erro ao enviar telegram: {e}")
-
-def check_prices():
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-
-    for url in URLS:
-        try:
-            response = requests.get(url, headers=headers)
-            
-            if response.status_code != 200:
-                print(f"Erro ao acessar {url}: Status {response.status_code}")
-                continue
-
-            soup = BeautifulSoup(response.content, 'html.parser')
-            script_tag = soup.find('script', id='__NEXT_DATA__')
-            
-            if script_tag:
-                json_data = json.loads(script_tag.string)
-                
-                try:
-                    # Lógica para ler o site do Oba Hortifruti
-                    if "obahortifruti.com.br" in url:
-                        product_data = json_data['props']['pageProps']['data']['product']
-                        name = product_data['name']
-                        price = product_data['offers']['offers'][0]['price']
-                        loja = "Oba Hortifruti"
-                        
-                    # Lógica para ler o site do Atacadão
-                    elif "atacadao.com.br" in url:
-                        product_data = json_data['props']['pageProps']['product']
-                        name = product_data['name']
-                        # Pega o 'lowPrice' (preço de atacado)
-                        price = product_data['offers']['lowPrice']
-                        loja = "Atacadão"
-                        
-                    else:
-                        print(f"Loja não reconhecida: {url}")
-                        continue
-                    
-                    print(f"Checando [{loja}]: {name} - R$ {price}")
-
-                    # Dispara o alerta se for menor que R$ 8,00
-                    if price < TARGET_PRICE:
-                        msg = f"🚨 PROMOÇÃO DETECTADA!\n\n🏪 Loja: {loja}\n🛒 Produto: {name}\n💰 Preço: R$ {price}\n🔗 Link: {url}"
-                        send_telegram_message(msg)
-                        
-                except KeyError as e:
-                    print(f"Erro de estrutura do JSON em {url}: {e}")
-            else:
-                print(f"Tag de dados não encontrada em {url}")
-
-        except Exception as e:
-            print(f"Erro genérico ao processar {url}: {e}")
-
-if __name__ == "__main__":
-    check_prices() 
-    """
-"""
-Monitor de Brinco Roubado — versão Telegram
-=============================================
-Drop-in replacement do script anterior. Usa os MESMOS secrets do GitHub:
+Monitor de Brinco Roubado — Palavras-chave + Busca Reversa Yandex
+==================================================================
+Drop-in replacement. Usa os MESMOS secrets que você já tem:
   - TELEGRAM_TOKEN
   - TELEGRAM_CHAT_ID
 
-Vasculha OLX, Mercado Livre e Enjoei em busca de anúncios novos que
-combinem com a descrição do brinco. Manda alerta no Telegram só quando
-houver coisa nova (filtra bijuteria/zircônia/folheado automaticamente).
+O QUE FAZ:
+  1. Busca palavras-chave em OLX, Mercado Livre e Enjoei (rápido, confiável)
+  2. Faz busca REVERSA POR IMAGEM no Yandex (best effort) e FILTRA pra
+     mostrar só resultados em marketplaces brasileiros
+  3. Manda alerta no Telegram de cada novo achado
+  4. Mantém histórico em SQLite (não te avisa duas vezes)
 
-Não precisa configurar nada novo no GitHub. Só colar este arquivo por
-cima do antigo e o workflow existente continua rodando normalmente.
+PRÉ-REQUISITO:
+  Suba o arquivo `brinco.jpg` na raiz do repositório (mesmo lugar do .py).
+  Na primeira execução, o script faz upload anônimo pro Imgur (1x só) e
+  salva a URL pública num arquivo `imgur_url.txt`. As próximas execuções
+  reutilizam a mesma URL.
+
+LIMITAÇÕES HONESTAS:
+  - Yandex pode bloquear o IP do GitHub Actions a qualquer momento.
+    Se bloquear, o resto do script (palavras-chave) continua funcionando.
+  - O algoritmo do Yandex acha similares, não idênticos. O filtro de
+    marketplace BR remove a maior parte do ruído.
 """
 
 import os
@@ -130,9 +30,10 @@ import sqlite3
 import time
 import random
 import re
+import base64
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -141,37 +42,85 @@ from bs4 import BeautifulSoup
 # CONFIGURAÇÃO — você edita ESTA seção
 # ============================================================
 
-# Palavras-chave de busca. Quanto mais específico, menos ruído.
+# Palavras-chave melhoradas: cobertura ampla, sinônimos e marcas conhecidas
+# que fazem brincos de flor com diamantes em pavê (formato 4 pétalas marquise)
 QUERIES = [
+    # Descrições genéricas
     "brinco flor diamante ouro branco",
-    "brinco diamante 4 petalas",
     "brinco flor brilhante ouro branco",
-    "brinco navete diamante",
+    "brinco diamante 4 petalas",
+    "brinco diamante quatro petalas",
+    "brinco navete diamante ouro branco",
     "brinco cluster diamante ouro branco",
-    # Se descobrir a marca, adicione: "brinco vivara estrela diamante"
+    "brinco estrela diamante ouro branco",
+    "brinco floral diamante ouro 18k",
+    "brinco pave diamante flor",
+    "brinco chuveiro diamante ouro branco",
+    # Marcas brasileiras que fazem esse modelo
+    "brinco vivara flor diamante",
+    "brinco hstern flor diamante",
+    "brinco h.stern petali",
+    "brinco roberto coin princess flower",
+    "brinco pasquale bruni petit garden",
+    # Internacional comum em e-commerce BR
+    "brinco louis vuitton star blossom",
+    "brinco tiffany flor diamante",
 ]
 
-# Só me avisa se o título tiver pelo menos UMA destas palavras
+# Filtros: precisa ter pelo menos UMA destas no título
 PALAVRAS_OBRIGATORIAS = ["diamante", "brilhante", "ouro branco", "flor",
-                         "petala", "pétala"]
+                         "petala", "pétala", "floral", "navete",
+                         "estrela", "blossom", "petali", "petit garden"]
 
-# Ignora anúncios óbvios de bijuteria
+# Ignora bijuteria óbvia
 PALAVRAS_EXCLUIR = ["zirconia", "zircônia", "folheado", "banhado",
                     "bijuteria", "infantil", "criança", "imitação",
-                    "fantasia", "prata"]
+                    "fantasia", "prata 925", "prata fina", "aço inox",
+                    "aço cirúrgico", "aço cirurgico"]
 
-# Cidades que recebem prioridade no alerta (anúncio aqui = mais suspeito)
+# URL pública da foto do brinco (já hospedada no Imgur)
+FOTO_URL_PUBLICA = "https://i.imgur.com/QeO0dJ5.jpeg"
+
+# Cidades prioritárias (anúncio aqui = mais suspeito, alerta destacado)
 CIDADES_PRIORITARIAS = ["sao paulo", "são paulo", "sp", "guarulhos",
-                        "osasco", "santo andre", "santo andré"]
+                        "osasco", "santo andre", "santo andré", "abc"]
+
+# DOMÍNIOS de marketplace BR que o filtro do Yandex vai aceitar
+MARKETPLACES_BR = [
+    "olx.com.br",
+    "mercadolivre.com.br",
+    "produto.mercadolivre.com.br",
+    "lista.mercadolivre.com.br",
+    "enjoei.com.br",
+    "etiquetaunica.com.br",
+    "abrechofeminino.com.br",
+    "repassa.com.br",
+    "facebook.com",          # marketplace
+    "instagram.com",          # vendedoras de joia usada
+    "shopee.com.br",
+    "amazon.com.br",
+    "magazineluiza.com.br",
+    "americanas.com.br",
+    "submarino.com.br",
+    "shoptime.com.br",
+    "leiloesjudiciais.com.br",
+    "leilaovip.com.br",
+    "superbid.net",
+    "sodresantoro.com.br",
+    "milanleiloeiro.com.br",
+]
 
 # ============================================================
-# CREDENCIAIS — vêm dos GitHub Secrets que você JÁ tem
+# CREDENCIAIS — vêm dos secrets que você JÁ tem configurados
 # ============================================================
 
 TELEGRAM_TOKEN   = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-DB = Path(__file__).parent / "anuncios_vistos.db"
+BASE_DIR = Path(__file__).parent
+DB       = BASE_DIR / "anuncios_vistos.db"
+FOTO     = BASE_DIR / "brinco.jpg"
+URL_CACHE = BASE_DIR / "imgur_url.txt"
 
 HEADERS = {
     "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -181,34 +130,30 @@ HEADERS = {
 }
 
 # ============================================================
-# TELEGRAM
+# TELEGRAM (mesmo do seu script antigo, suporta múltiplos IDs)
 # ============================================================
 
 def send_telegram_message(message):
-    """Mesma lógica do seu script antigo — suporta múltiplos chat IDs."""
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print(f"Telegram não configurado. Mensagem seria:\n{message}")
+        print(f"⚠️ Telegram não configurado. Mensagem seria:\n{message}")
         return
-
-    chat_ids_list = TELEGRAM_CHAT_ID.split(",")
-    for chat_id in chat_ids_list:
-        chat_id_clean = chat_id.strip()
-        if not chat_id_clean:
+    for chat_id in TELEGRAM_CHAT_ID.split(","):
+        cid = chat_id.strip()
+        if not cid:
             continue
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": chat_id_clean,
-            "text": message,
-            "disable_web_page_preview": False,
-        }
         try:
-            requests.post(url, json=payload, timeout=10)
-            print(f"✅ Mensagem enviada para {chat_id_clean}")
+            requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage",
+                json={"chat_id": cid, "text": message,
+                      "disable_web_page_preview": False},
+                timeout=10,
+            )
+            print(f"  ✅ Telegram -> {cid}")
         except Exception as e:
-            print(f"⚠️ Erro ao enviar telegram: {e}")
+            print(f"  ⚠️ Erro Telegram: {e}")
 
 # ============================================================
-# BANCO DE DADOS — não te avisa duas vezes do mesmo anúncio
+# BANCO
 # ============================================================
 
 def init_db():
@@ -217,7 +162,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS vistos (
             url TEXT PRIMARY KEY,
             site TEXT, titulo TEXT, preco TEXT,
-            local TEXT, visto_em TEXT
+            local TEXT, fonte TEXT, visto_em TEXT
         )
     """)
     conn.commit()
@@ -228,8 +173,9 @@ def ja_visto(conn, url):
 
 def marcar_visto(conn, a):
     conn.execute(
-        "INSERT OR IGNORE INTO vistos VALUES (?, ?, ?, ?, ?, ?)",
-        (a["url"], a["site"], a["titulo"], a["preco"], a["local"],
+        "INSERT OR IGNORE INTO vistos VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (a["url"], a["site"], a["titulo"], a.get("preco", ""),
+         a.get("local", ""), a.get("fonte", "palavra-chave"),
          datetime.now().isoformat())
     )
     conn.commit()
@@ -239,10 +185,10 @@ def marcar_visto(conn, a):
 # ============================================================
 
 def passa_filtros(titulo):
-    texto = titulo.lower()
-    if any(p in texto for p in PALAVRAS_EXCLUIR):
+    t = titulo.lower()
+    if any(p in t for p in PALAVRAS_EXCLUIR):
         return False
-    if not any(p in texto for p in PALAVRAS_OBRIGATORIAS):
+    if not any(p in t for p in PALAVRAS_OBRIGATORIAS):
         return False
     return True
 
@@ -251,8 +197,18 @@ def eh_prioritario(local):
         return False
     return any(c in local.lower() for c in CIDADES_PRIORITARIAS)
 
+def eh_marketplace_br(url):
+    if not url:
+        return False
+    try:
+        host = urlparse(url).netloc.lower().replace("www.", "")
+    except Exception:
+        return False
+    return any(host == mp or host.endswith("." + mp) or mp in host
+               for mp in MARKETPLACES_BR)
+
 # ============================================================
-# SCRAPERS
+# SCRAPERS DE PALAVRA-CHAVE
 # ============================================================
 
 def scrape_olx(query):
@@ -275,9 +231,10 @@ def scrape_olx(query):
                 "titulo": titulo.get_text(strip=True),
                 "preco": preco.get_text(strip=True) if preco else "",
                 "local": local.strip() if local else "",
+                "fonte": "palavra-chave",
             })
     except Exception as e:
-        print(f"  ⚠️ OLX erro: {e}")
+        print(f"    ⚠️ OLX erro: {e}")
     return out
 
 def scrape_mercado_livre(query):
@@ -300,9 +257,10 @@ def scrape_mercado_livre(query):
                 "titulo": link_el.get_text(strip=True),
                 "preco": preco_el.get_text(strip=True) if preco_el else "",
                 "local": local_el.get_text(strip=True) if local_el else "",
+                "fonte": "palavra-chave",
             })
     except Exception as e:
-        print(f"  ⚠️ ML erro: {e}")
+        print(f"    ⚠️ ML erro: {e}")
     return out
 
 def scrape_enjoei(query):
@@ -321,10 +279,117 @@ def scrape_enjoei(query):
                 continue
             out.append({
                 "site": "Enjoei", "url": link, "titulo": titulo,
-                "preco": "", "local": "",
+                "preco": "", "local": "", "fonte": "palavra-chave",
             })
     except Exception as e:
-        print(f"  ⚠️ Enjoei erro: {e}")
+        print(f"    ⚠️ Enjoei erro: {e}")
+    return out
+
+# ============================================================
+# BUSCA REVERSA YANDEX
+# ============================================================
+
+def upload_para_imgur(foto_path):
+    """
+    Upload anônimo da foto pro Imgur. Funciona sem API key (rate limit baixo
+    mas suficiente — só rodamos 1x). Retorna a URL pública da imagem.
+    """
+    print("  📤 Fazendo upload da foto pro Imgur (1ª vez só)...")
+    try:
+        with open(foto_path, "rb") as f:
+            img_b64 = base64.b64encode(f.read()).decode()
+        # Client-ID público do Imgur (qualquer um funciona pra upload anônimo)
+        r = requests.post(
+            "https://api.imgur.com/3/image",
+            headers={"Authorization": "Client-ID 546c25a59c58ad7"},
+            data={"image": img_b64, "type": "base64"},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            url = r.json()["data"]["link"]
+            URL_CACHE.write_text(url)
+            print(f"  ✅ Foto hospedada: {url}")
+            return url
+        else:
+            print(f"  ⚠️ Imgur falhou: {r.status_code} {r.text[:200]}")
+            return None
+    except Exception as e:
+        print(f"  ⚠️ Erro upload Imgur: {e}")
+        return None
+
+def obter_url_foto():
+    """Retorna URL pública da foto. Prioridade: hardcoded > cache > upload."""
+    if FOTO_URL_PUBLICA:
+        return FOTO_URL_PUBLICA
+    if URL_CACHE.exists():
+        url = URL_CACHE.read_text().strip()
+        if url:
+            return url
+    if not FOTO.exists():
+        print(f"  ⚠️ Foto não encontrada em {FOTO}. Pulando busca reversa.")
+        return None
+    return upload_para_imgur(FOTO)
+
+def scrape_yandex_reverso(foto_url):
+    """
+    Faz busca reversa no Yandex com a URL da foto. Filtra resultados
+    pra mostrar só os de marketplaces BR.
+
+    Best effort: pode quebrar se Yandex bloquear ou mudar HTML.
+    """
+    if not foto_url:
+        return []
+
+    yandex_url = (f"https://yandex.com/images/search"
+                  f"?rpt=imageview&url={quote_plus(foto_url)}")
+    out = []
+    try:
+        r = requests.get(yandex_url, headers=HEADERS, timeout=20)
+        if r.status_code != 200:
+            print(f"    ⚠️ Yandex retornou {r.status_code}")
+            return out
+
+        # Yandex tem múltiplos formatos de resposta. A gente captura
+        # qualquer link externo que apareça e filtra depois.
+        soup = BeautifulSoup(r.text, "lxml")
+
+        candidatos = set()
+
+        # 1. Links diretos no HTML
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if href.startswith("http") and "yandex." not in href:
+                candidatos.add(href)
+
+        # 2. URLs embutidas em data-attributes / JSON do HTML
+        # Yandex coloca resultados num blob JSON dentro de <div class="serp-item">
+        for item in soup.select("div.serp-item, div.SimilarImage"):
+            data = item.get("data-bem", "") or str(item)
+            urls_match = re.findall(r'https?://[^\s"\'<>]+', data)
+            for u in urls_match:
+                if "yandex." not in u and "mds.yandex" not in u:
+                    candidatos.add(u)
+
+        # Filtra só marketplaces BR
+        for url in candidatos:
+            if not eh_marketplace_br(url):
+                continue
+            # Limpa querystring de tracking
+            url_limpa = url.split("?utm_")[0].split("&utm_")[0]
+            out.append({
+                "site": f"Yandex→{urlparse(url_limpa).netloc}",
+                "url": url_limpa,
+                "titulo": "[FOTO SIMILAR encontrada via Yandex]",
+                "preco": "",
+                "local": "",
+                "fonte": "busca-reversa-yandex",
+            })
+
+        print(f"    ℹ️ Yandex: {len(candidatos)} candidatos, "
+              f"{len(out)} em marketplaces BR")
+
+    except Exception as e:
+        print(f"    ⚠️ Yandex erro: {e}")
     return out
 
 # ============================================================
@@ -335,6 +400,11 @@ def check_anuncios():
     conn = init_db()
     novos = []
 
+    # === FASE 1: PALAVRAS-CHAVE ===
+    print("\n" + "=" * 60)
+    print("FASE 1: BUSCA POR PALAVRAS-CHAVE")
+    print("=" * 60)
+
     SCRAPERS = [
         ("OLX",           scrape_olx),
         ("Mercado Livre", scrape_mercado_livre),
@@ -342,7 +412,7 @@ def check_anuncios():
     ]
 
     for query in QUERIES:
-        print(f"\n🔎 Buscando: '{query}'")
+        print(f"\n🔎 '{query}'")
         for nome, scraper in SCRAPERS:
             print(f"  • {nome}...", end=" ", flush=True)
             try:
@@ -351,42 +421,72 @@ def check_anuncios():
                 print(f"erro: {e}")
                 continue
             print(f"{len(resultados)} resultados")
-
             for a in resultados:
                 if ja_visto(conn, a["url"]):
                     continue
                 if not passa_filtros(a["titulo"]):
-                    marcar_visto(conn, a)  # marca pra não reprocessar
+                    marcar_visto(conn, a)
                     continue
                 novos.append(a)
                 marcar_visto(conn, a)
-
             time.sleep(random.uniform(3, 5))
 
-    print(f"\n📊 Novos relevantes: {len(novos)}")
+    # === FASE 2: BUSCA REVERSA POR IMAGEM (best effort) ===
+    print("\n" + "=" * 60)
+    print("FASE 2: BUSCA REVERSA POR IMAGEM (Yandex)")
+    print("=" * 60)
 
-    # Manda uma mensagem por anúncio (priorizando SP no topo)
-    novos.sort(key=lambda a: (not eh_prioritario(a["local"]), a["site"]))
+    foto_url = obter_url_foto()
+    if foto_url:
+        print(f"\n  🖼️ URL da foto: {foto_url}")
+        print("  🔎 Consultando Yandex...")
+        resultados_visuais = scrape_yandex_reverso(foto_url)
+        for a in resultados_visuais:
+            if ja_visto(conn, a["url"]):
+                continue
+            novos.append(a)
+            marcar_visto(conn, a)
+    else:
+        print("  ⏭️ Pulando busca reversa (sem foto disponível)")
+
+    # === FASE 3: ENVIAR ALERTAS ===
+    print("\n" + "=" * 60)
+    print(f"📊 RESUMO: {len(novos)} novo(s) achado(s)")
+    print("=" * 60)
+
+    # Ordena: busca reversa primeiro, depois SP, depois resto
+    novos.sort(key=lambda a: (
+        a.get("fonte") != "busca-reversa-yandex",
+        not eh_prioritario(a.get("local", "")),
+        a["site"]
+    ))
 
     for a in novos:
-        flag = "🚨 [SP/REGIÃO] " if eh_prioritario(a["local"]) else "🔔 "
-        msg_parts = [
+        if a.get("fonte") == "busca-reversa-yandex":
+            flag = "🚨🖼️ [FOTO SIMILAR] "
+        elif eh_prioritario(a.get("local", "")):
+            flag = "🚨 [SP/REGIÃO] "
+        else:
+            flag = "🔔 "
+
+        partes = [
             f"{flag}Possível brinco encontrado!",
             "",
             f"🏪 Site: {a['site']}",
             f"📿 Título: {a['titulo']}",
         ]
-        if a["preco"]:
-            msg_parts.append(f"💰 Preço: {a['preco']}")
-        if a["local"]:
-            msg_parts.append(f"📍 Local: {a['local']}")
-        msg_parts.append("")
-        msg_parts.append(f"🔗 {a['url']}")
-        msg_parts.append("")
-        msg_parts.append("⚠️ NÃO contate o vendedor. Salve print e leve à delegacia.")
-
-        send_telegram_message("\n".join(msg_parts))
-        time.sleep(1)  # evita flood do Telegram
+        if a.get("preco"):
+            partes.append(f"💰 Preço: {a['preco']}")
+        if a.get("local"):
+            partes.append(f"📍 Local: {a['local']}")
+        partes.extend([
+            "",
+            f"🔗 {a['url']}",
+            "",
+            "⚠️ NÃO contate o vendedor. Salve print e leve à delegacia.",
+        ])
+        send_telegram_message("\n".join(partes))
+        time.sleep(1)
 
     conn.close()
 
