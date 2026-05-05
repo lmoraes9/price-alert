@@ -45,10 +45,16 @@ from bs4 import BeautifulSoup
 # Palavras-chave melhoradas: cobertura ampla, sinônimos e marcas conhecidas
 # que fazem brincos de flor com diamantes em pavê (formato 4 pétalas marquise)
 QUERIES = [
+    # MODO DIAGNÓSTICO: só 2 queries pra rodar rápido e ver o que tá acontecendo
+    "brinco diamante ouro branco",
+    "cadeira girafa",
+]
+
+# Quando funcionar, descomenta a lista completa abaixo:
+QUERIES_COMPLETAS = [
     # =============================================
     # BRINCO (objeto principal)
     # =============================================
-    # Descrições genéricas
     "brinco flor diamante ouro branco",
     "brinco flor brilhante ouro branco",
     "brinco diamante 4 petalas",
@@ -59,19 +65,14 @@ QUERIES = [
     "brinco floral diamante ouro 18k",
     "brinco pave diamante flor",
     "brinco chuveiro diamante ouro branco",
-    # Marcas brasileiras que fazem esse modelo
     "brinco vivara flor diamante",
     "brinco hstern flor diamante",
     "brinco h.stern petali",
     "brinco roberto coin princess flower",
     "brinco pasquale bruni petit garden",
-    # Internacional comum em e-commerce BR
     "brinco louis vuitton star blossom",
     "brinco tiffany flor diamante",
-
-    # =============================================
-    # CADEIRA GIRAFA (teste — sabemos que tem anúncio)
-    # =============================================
+    # CADEIRA GIRAFA (teste)
     "cadeira girafa infantil madeira",
     "cadeira infantil girafa",
     "cadeirinha girafa madeira",
@@ -238,10 +239,14 @@ def scrape_olx(query):
     out = []
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
+        print(f"      [DEBUG OLX] HTTP {r.status_code}, {len(r.text)} bytes", end="")
         if r.status_code != 200:
+            print(f" | BLOQUEADO")
             return out
         soup = BeautifulSoup(r.text, "lxml")
-        for card in soup.select('a[data-ds-component="DS-AdCard"]'):
+        cards = soup.select('a[data-ds-component="DS-AdCard"]')
+        print(f" | {len(cards)} cards encontrados no HTML")
+        for card in cards:
             link = card.get("href", "")
             titulo = card.select_one('h2')
             preco = card.select_one('[data-ds-component="DS-Text"]')
@@ -256,7 +261,7 @@ def scrape_olx(query):
                 "fonte": "palavra-chave",
             })
     except Exception as e:
-        print(f"    ⚠️ OLX erro: {e}")
+        print(f"\n    ⚠️ OLX erro: {e}")
     return out
 
 def scrape_mercado_livre(query):
@@ -264,10 +269,14 @@ def scrape_mercado_livre(query):
     out = []
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
+        print(f"      [DEBUG ML] HTTP {r.status_code}, {len(r.text)} bytes", end="")
         if r.status_code != 200:
+            print(f" | BLOQUEADO")
             return out
         soup = BeautifulSoup(r.text, "lxml")
-        for card in soup.select('li.ui-search-layout__item'):
+        cards = soup.select('li.ui-search-layout__item')
+        print(f" | {len(cards)} cards encontrados no HTML")
+        for card in cards:
             link_el = card.select_one('a.poly-component__title, a.ui-search-link')
             if not link_el:
                 continue
@@ -282,7 +291,7 @@ def scrape_mercado_livre(query):
                 "fonte": "palavra-chave",
             })
     except Exception as e:
-        print(f"    ⚠️ ML erro: {e}")
+        print(f"\n    ⚠️ ML erro: {e}")
     return out
 
 def scrape_enjoei(query):
@@ -290,10 +299,14 @@ def scrape_enjoei(query):
     out = []
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
+        print(f"      [DEBUG Enjoei] HTTP {r.status_code}, {len(r.text)} bytes", end="")
         if r.status_code != 200:
+            print(f" | BLOQUEADO")
             return out
         soup = BeautifulSoup(r.text, "lxml")
-        for card in soup.select('a[href*="/p/"]')[:20]:
+        cards = soup.select('a[href*="/p/"]')[:20]
+        print(f" | {len(cards)} cards encontrados no HTML")
+        for card in cards:
             href = card.get("href", "")
             link = href if href.startswith("http") else f"https://www.enjoei.com.br{href}"
             titulo = card.get("title") or card.get_text(strip=True)[:120]
@@ -304,7 +317,7 @@ def scrape_enjoei(query):
                 "preco": "", "local": "", "fonte": "palavra-chave",
             })
     except Exception as e:
-        print(f"    ⚠️ Enjoei erro: {e}")
+        print(f"\n    ⚠️ Enjoei erro: {e}")
     return out
 
 # ============================================================
