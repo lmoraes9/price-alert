@@ -45,6 +45,9 @@ from bs4 import BeautifulSoup
 # Palavras-chave melhoradas: cobertura ampla, sinônimos e marcas conhecidas
 # que fazem brincos de flor com diamantes em pavê (formato 4 pétalas marquise)
 QUERIES = [
+    # =============================================
+    # BRINCO (objeto principal)
+    # =============================================
     # Descrições genéricas
     "brinco flor diamante ouro branco",
     "brinco flor brilhante ouro branco",
@@ -65,21 +68,40 @@ QUERIES = [
     # Internacional comum em e-commerce BR
     "brinco louis vuitton star blossom",
     "brinco tiffany flor diamante",
+
+    # =============================================
+    # CADEIRA GIRAFA (teste — sabemos que tem anúncio)
+    # =============================================
+    "cadeira girafa infantil madeira",
+    "cadeira infantil girafa",
+    "cadeirinha girafa madeira",
+    "cadeira montessoriana girafa",
+    "cadeira infantil madeira pinus girafa",
 ]
 
 # Filtros: precisa ter pelo menos UMA destas no título
-PALAVRAS_OBRIGATORIAS = ["diamante", "brilhante", "ouro branco", "flor",
-                         "petala", "pétala", "floral", "navete",
-                         "estrela", "blossom", "petali", "petit garden"]
+# (inclui termos de brinco E de cadeira pra teste)
+PALAVRAS_OBRIGATORIAS = [
+    # Brinco
+    "diamante", "brilhante", "ouro branco", "flor",
+    "petala", "pétala", "floral", "navete",
+    "estrela", "blossom", "petali", "petit garden",
+    # Cadeira girafa (teste)
+    "girafa",
+]
 
 # Ignora bijuteria óbvia
+# (removi "infantil/criança" porque cadeira é infantil; deixei só os bem genéricos)
 PALAVRAS_EXCLUIR = ["zirconia", "zircônia", "folheado", "banhado",
-                    "bijuteria", "infantil", "criança", "imitação",
-                    "fantasia", "prata 925", "prata fina", "aço inox",
+                    "bijuteria", "imitação", "fantasia",
+                    "prata 925", "prata fina", "aço inox",
                     "aço cirúrgico", "aço cirurgico"]
 
-# URL pública da foto do brinco (já hospedada no Imgur)
-FOTO_URL_PUBLICA = "https://i.imgur.com/QeO0dJ5.jpeg"
+# URLs públicas das fotos pra busca reversa (uma busca por foto)
+FOTOS_URL_PUBLICAS = [
+    ("brinco",         "https://i.imgur.com/QeO0dJ5.jpeg"),
+    ("cadeira girafa", "https://i.imgur.com/IzK7xGo.png"),
+]
 
 # Cidades prioritárias (anúncio aqui = mais suspeito, alerta destacado)
 CIDADES_PRIORITARIAS = ["sao paulo", "são paulo", "sp", "guarulhos",
@@ -317,18 +339,19 @@ def upload_para_imgur(foto_path):
         print(f"  ⚠️ Erro upload Imgur: {e}")
         return None
 
-def obter_url_foto():
-    """Retorna URL pública da foto. Prioridade: hardcoded > cache > upload."""
-    if FOTO_URL_PUBLICA:
-        return FOTO_URL_PUBLICA
+def obter_urls_fotos():
+    """Retorna lista de (nome, url) das fotos pra busca reversa."""
+    if FOTOS_URL_PUBLICAS:
+        return FOTOS_URL_PUBLICAS
     if URL_CACHE.exists():
         url = URL_CACHE.read_text().strip()
         if url:
-            return url
+            return [("foto", url)]
     if not FOTO.exists():
-        print(f"  ⚠️ Foto não encontrada em {FOTO}. Pulando busca reversa.")
-        return None
-    return upload_para_imgur(FOTO)
+        print(f"  ⚠️ Nenhuma foto disponível. Pulando busca reversa.")
+        return []
+    url = upload_para_imgur(FOTO)
+    return [("foto", url)] if url else []
 
 def scrape_yandex_reverso(foto_url):
     """
@@ -436,17 +459,19 @@ def check_anuncios():
     print("FASE 2: BUSCA REVERSA POR IMAGEM (Yandex)")
     print("=" * 60)
 
-    foto_url = obter_url_foto()
-    if foto_url:
-        print(f"\n  🖼️ URL da foto: {foto_url}")
+    fotos = obter_urls_fotos()
+    for nome, foto_url in fotos:
+        print(f"\n  🖼️ Foto '{nome}': {foto_url}")
         print("  🔎 Consultando Yandex...")
         resultados_visuais = scrape_yandex_reverso(foto_url)
         for a in resultados_visuais:
+            a["titulo"] = f"[FOTO SIMILAR de '{nome}' via Yandex]"
             if ja_visto(conn, a["url"]):
                 continue
             novos.append(a)
             marcar_visto(conn, a)
-    else:
+        time.sleep(random.uniform(3, 5))  # rate limit entre fotos
+    if not fotos:
         print("  ⏭️ Pulando busca reversa (sem foto disponível)")
 
     # === FASE 3: ENVIAR ALERTAS ===
