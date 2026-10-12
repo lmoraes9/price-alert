@@ -1,12 +1,21 @@
-name: Monitor Brinco
+name: Monitor de Preços
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # a cada 6 horas
-  workflow_dispatch:         # botão de rodar manual
+    # 11h e 23h UTC = 8h e 20h no horário de Brasília
+    - cron: '0 11,23 * * *'
+  workflow_dispatch:
+    inputs:
+      teste:
+        description: 'Só mandar uma mensagem de teste no WhatsApp'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+
+concurrency:
+  group: monitor-precos
 
 jobs:
   check-price:
@@ -21,19 +30,19 @@ jobs:
           python-version: '3.11'
 
       - name: Instalar dependências
-        run: |
-          pip install requests beautifulsoup4 lxml
+        run: pip install -r requirements.txt
 
       - name: Rodar script
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python main.py
+          CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+          CALLMEBOT_APIKEY: ${{ secrets.CALLMEBOT_APIKEY }}
+        run: python main.py ${{ inputs.teste && '--teste' || '' }}
 
-      - name: Salvar histórico de anúncios vistos
+      - name: Salvar estado
+        if: ${{ !inputs.teste }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add anuncios_vistos.db || true
-          git diff --staged --quiet || git commit -m "Atualizar histórico [skip ci]"
+          git add estado.json
+          git diff --staged --quiet || git commit -m "Atualizar estado dos preços [skip ci]"
           git push || true

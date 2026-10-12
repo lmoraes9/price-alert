@@ -1,0 +1,37 @@
+{
+  "preco_alvo_padrao": 8.00,
+  "produtos": [
+    {
+      "nome": "Hydro Protein Tangerina",
+      "url": "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-tangerina-7335-58136/p"
+    },
+    {
+      "nome": "Hydro Protein Frutas Vermelhas",
+      "url": "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-frutas-vermelhas-9555-59217/p"
+    },
+    {
+      "nome": "Hydro Protein Uva",
+      "url": "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-uva-7337-58137/p"
+    },
+    {
+      "nome": "Hydro Protein Limão",
+      "url": "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-limao-7339-58138/p"
+    },
+    {
+      "nome": "Hydro Protein Tangerina",
+      "url": "https://www.obahortifruti.com.br/hydro-protein-tangerina-moving-500ml-100010009/p"
+    },
+    {
+      "nome": "Hydro Protein Uva",
+      "url": "https://www.obahortifruti.com.br/hydro-protein-uva-moving-500ml-100010010/p"
+    },
+    {
+      "nome": "Hydro Protein Limão",
+      "url": "https://www.obahortifruti.com.br/hydro-protein-limao-moving-500ml-100010008/p"
+    },
+    {
+      "nome": "Hydro Protein Frutas Vermelhas",
+      "url": "https://www.obahortifruti.com.br/moving-hydro-protein-frutas-vermelhas-500-ml-100010970/p"
+    }
+  ]
+}
