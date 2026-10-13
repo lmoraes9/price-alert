@@ -78,10 +78,12 @@ def send_whatsapp(message):
                 params={"phone": phone, "text": message, "apikey": apikey},
                 timeout=30,
             )
-            if resp.ok:
+            # O CallMeBot responde 200 até quando dá erro, então o que vale é o texto
+            resposta = " ".join(BeautifulSoup(resp.text, "lxml").get_text(" ").split())
+            if resp.ok and re.search(r"queued|sent", resposta, re.I):
                 print(f"Mensagem enviada para {phone[:-4]}****")
             else:
-                print(f"Erro do CallMeBot ({resp.status_code}): {resp.text[:200]}")
+                print(f"Erro do CallMeBot ({resp.status_code}) para {phone[:-4]}****: {resposta[:300]}")
         except Exception as e:
             print(f"Erro ao enviar WhatsApp: {e}")
         # O CallMeBot não gosta de mensagens muito seguidas
