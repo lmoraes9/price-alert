@@ -1,34 +1,34 @@
 {
   "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-frutas-vermelhas-9555-59217/p": {
-    "checado_em": "2026-10-18 14:11",
+    "checado_em": "2026-10-19 00:33",
     "falhas": 0,
     "ultimo_preco": 8.49
   },
   "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-limao-7339-58138/p": {
-    "checado_em": "2026-10-18 14:11",
+    "checado_em": "2026-10-19 00:34",
     "falhas": 0,
     "ultimo_preco": 8.49
   },
   "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-tangerina-7335-58136/p": {
-    "falhas": 11
+    "falhas": 12
   },
   "https://www.atacadao.com.br/suplemento-alimentar-hydro-protein-uva-7337-58137/p": {
-    "checado_em": "2026-10-18 14:11",
+    "checado_em": "2026-10-19 00:33",
     "falhas": 0,
     "ultimo_preco": 8.49
   },
   "https://www.obahortifruti.com.br/hydro-protein-limao-moving-500ml-100010008/p": {
-    "falhas": 11
+    "falhas": 12
   },
   "https://www.obahortifruti.com.br/hydro-protein-tangerina-moving-500ml-100010009/p": {
-    "checado_em": "2026-10-18 14:11",
+    "checado_em": "2026-10-19 00:34",
     "falhas": 0,
     "ultimo_preco": 11.99
   },
   "https://www.obahortifruti.com.br/hydro-protein-uva-moving-500ml-100010010/p": {
-    "falhas": 11
+    "falhas": 12
   },
   "https://www.obahortifruti.com.br/moving-hydro-protein-frutas-vermelhas-500-ml-100010970/p": {
-    "falhas": 11
+    "falhas": 12
   }
 }
